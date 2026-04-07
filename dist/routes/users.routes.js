@@ -1,0 +1,11 @@
+import { Hono } from 'hono';
+import { getAllUsers, getUserById, createUser, updateUserById, deleteUserById, searchUserByName, getScholars } from '../controllers/users.controller.js';
+const usersRoute = new Hono();
+usersRoute.get("/", getAllUsers);
+usersRoute.get("/search/:name", searchUserByName);
+usersRoute.get("/scholars", getScholars);
+usersRoute.get("/:id", getUserById);
+usersRoute.post("/", createUser);
+usersRoute.put("/:id", updateUserById);
+usersRoute.delete("/:id", deleteUserById);
+export default usersRoute;
