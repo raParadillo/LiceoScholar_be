@@ -6,8 +6,12 @@ import bcrypt from "bcryptjs";
 import type { ResultSetHeader } from "mysql2";
 import nodemailer from "nodemailer";
 
-const SMTP_USER = "paradilloraquealexy@gmail.com";
-const SMTP_PASS = "zeub dnjc fzve xfcy";
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS;
+
+if (!SMTP_USER || !SMTP_PASS) {
+    throw new Error("SMTP credentials not configured in environment variables");
+}
 
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
