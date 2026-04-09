@@ -83,21 +83,26 @@ export async function register(context: Context) {
 export async function login(context: Context) {
     try {
         const { Email, Password } = await context.req.json();
+        console.log('Login attempt:', { Email });
 
         const [users] = await pool.query<UserModel[]>(
             `SELECT * FROM users WHERE Email = ?`,
             [Email]
         );
+        console.log('Users found:', users.length);
 
         if (users.length === 0) {
+            console.log('No user found with email:', Email);
             return context.json({ message: "Invalid credentials" }, 401);
         }
 
         const user = users[0];
         
         const isValidPassword = await bcrypt.compare(Password, user.Password);
-        
+        console.log('Password check:', { provided: Password, storedHash: user.Password?.substring(0, 20) + '...', isValid: isValidPassword, roleID: user.RoleID });
+
         if (!isValidPassword) {
+            console.log('Password mismatch for user:', Email);
             return context.json({ message: "Invalid credentials" }, 401);
         }
         
@@ -139,8 +144,19 @@ export async function getMe(context: Context) {
         const { payload } = decode(token);
         const userId = payload.userId;
 
-        const [users] = await pool.query<UserModel[]>(
-            `SELECT UserID, FirstName, LastName, Email, RoleID FROM users WHERE UserID = ?`,
+        const [users] = await pool.query<any[]>(
+            `SELECT 
+                users.UserID, 
+                users.FirstName, 
+                users.LastName, 
+                users.Email, 
+                users.RoleID,
+                users.Phone_number,
+                courses.CourseName,
+                courses.CourseCode
+            FROM users 
+            LEFT JOIN courses ON users.CourseID = courses.CourseID
+            WHERE users.UserID = ?`,
             [userId]
         );
 

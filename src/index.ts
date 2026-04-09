@@ -6,13 +6,25 @@ import applicationsRouter from "./routes/applications.routes.js";
 import authRouter from "./routes/auth.routes.js";
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 
 
 const app = new Hono()
 
-app.get("/", (c) => {
-  return c.json({ message: "Hello, Hono!" })
-})
+app.use(cors({
+  origin: 'http://localhost:4200',
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  exposeHeaders: ['Content-Length'],
+  maxAge: 600,
+  credentials: true,
+}));
+
+
+app.get('/', (c) => {
+  return c.text('Hello Hono!')
+});
+
 
 app.route("/stats", statsRoute);
 app.route("/users", usersRoute);
