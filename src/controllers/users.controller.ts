@@ -117,23 +117,56 @@ export async function createUser(context: Context) {
 export async function updateUserById(context: Context) {
     try {
         const id = context.req.param("id");
-        const userData: CreateUserModel = await context.req.json();
-        const hashedPassword = await bcrypt.hash(userData.Password, 10);
+        const userData: Partial<CreateUserModel> = await context.req.json();
 
-        const [result] = await pool.query<ResultSetHeader>("UPDATE users SET FirstName = ?, LastName = ?, Email = ?, Password = ?, RoleID = ?, CourseID = ?, Phone_Number = ? WHERE UserID = ?", [
-            userData.FirstName,
-            userData.LastName,
-            userData.Email,
-            hashedPassword,
-            userData.RoleID,
-            userData.CourseID,
-            userData.Phone_Number,
-            id
-        ]);
-        if (result){
-            const [rows] = await pool.query<UserModel[]>("SELECT * from users WHERE UserID = ?", [id]);
-            const data = rows[0];
+        // Build dynamic update query based on provided fields
+        const updates: string[] = [];
+        const values: any[] = [];
+
+        if (userData.FirstName !== undefined) {
+            updates.push("FirstName = ?");
+            values.push(userData.FirstName);
+        }
+        if (userData.LastName !== undefined) {
+            updates.push("LastName = ?");
+            values.push(userData.LastName);
+        }
+        if (userData.Email !== undefined) {
+            updates.push("Email = ?");
+            values.push(userData.Email);
+        }
+        if (userData.Phone_Number !== undefined) {
+            updates.push("Phone_Number = ?");
+            values.push(userData.Phone_Number);
+        }
+        if (userData.Password !== undefined && userData.Password) {
+            const hashedPassword = await bcrypt.hash(userData.Password, 10);
+            updates.push("Password = ?");
+            values.push(hashedPassword);
+        }
+        if (userData.RoleID !== undefined) {
+            updates.push("RoleID = ?");
+            values.push(userData.RoleID);
+        }
+        if (userData.CourseID !== undefined) {
+            updates.push("CourseID = ?");
+            values.push(userData.CourseID);
+        }
+
+        if (updates.length === 0) {
+            return context.json({message: "No fields to update"}, 400);
+        }
+
+        values.push(id);
+        const [result] = await pool.query<ResultSetHeader>(
+            `UPDATE users SET ${updates.join(", ")} WHERE UserID = ?`,
+            values
+        );
+
+        if (result.affectedRows > 0){
             return context.json({message: "User updated successfully"}, 200);
+        } else {
+            return context.json({message: "User not found"}, 404);
         }
     } catch (error) {
         console.log(error);
