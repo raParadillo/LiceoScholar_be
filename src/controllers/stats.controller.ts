@@ -4,7 +4,7 @@ import type { ScholarStats, DailyApplicationsStats, UsersByCollegeStats } from "
     
 export async function getScholars(context: Context){
     try {
-        const [rows] = await pool.query<ScholarStats[]>("SELECT COUNT(CASE WHEN Scholarship_Status = 'Approved' THEN 1 END) as Active_Scholarships, COUNT(users.UserID) as Total_Users FROM applications LEFT JOIN users ON applications.UserID = users.UserID");
+        const [rows] = await pool.query<ScholarStats[]>("SELECT COUNT(CASE WHEN Scholarship_Status = 'Approved' THEN 1 END) as Active_Scholarships, COUNT(DISTINCT users.UserID) as Total_Users FROM applications LEFT JOIN users ON applications.UserID = users.UserID");
         
         return context.json(rows[0], 200);
     } catch (error) {
@@ -15,7 +15,7 @@ export async function getScholars(context: Context){
 
 export async function getDailyApplicationsStats(context: Context){
     try {
-        const [rows] = await pool.query<DailyApplicationsStats[]>("SELECT DATE_FORMAT(Submitted_Date, '%Y-%m-%d') as Date, COUNT(*) as Total_Applications FROM applications GROUP BY DATE_FORMAT(Submitted_Date, '%Y-%m-%d') ORDER BY Date DESC");
+        const [rows] = await pool.query<DailyApplicationsStats[]>("SELECT DATE_FORMAT(Submitted_Date, '%Y-%m-%d') as Date, COUNT(*) as Total_Applications FROM applications GROUP BY DATE_FORMAT(Submitted_Date, '%Y-%m-%d') ORDER BY Date ASC");
         return context.json(rows, 200);
     } catch (error) {
         console.log(error); 
