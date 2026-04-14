@@ -5,6 +5,7 @@ import type { UserModel, CreateUserModel } from "../models/users.model.ts";
 import bcrypt from "bcryptjs";
 import type { ResultSetHeader } from "mysql2";
 import nodemailer from "nodemailer";
+import { createRequirementsForUserByID } from "./requirments.controller.js";
 
 const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
@@ -30,7 +31,15 @@ function generateOTP(): string {
 export async function register(context: Context) {
     try {
         const userData: CreateUserModel = await context.req.json();
+
+        // Validate email domain
+        if (!userData.Email.endsWith('@liceo.edu.ph')) {
+            return context.json({ message: "Only @liceo.edu.ph emails are allowed" }, 400);
+        }
+
         const hashedPassword = await bcrypt.hash(userData.Password, 10);
+
+        
 
         const [result] = await pool.query<ResultSetHeader>(
             "INSERT INTO users (FirstName, LastName, Email, Password, RoleID, CourseID, Phone_Number) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -45,6 +54,7 @@ export async function register(context: Context) {
             ]
         );
 
+       
         if (result) {
             const id = result.insertId;
             const [rows] = await pool.query<UserModel[]>(
@@ -58,6 +68,7 @@ export async function register(context: Context) {
                 email: user.Email,
                 role: user.RoleID
             };
+            await createRequirementsForUserByID(result.insertId);
 
             const token = await sign(payload, process.env.JWT_SECRET || 'fallback-secret');
 
@@ -84,6 +95,11 @@ export async function login(context: Context) {
     try {
         const { Email, Password } = await context.req.json();
         console.log('Login attempt:', { Email });
+
+        // Validate email domain
+        if (!Email.endsWith('@liceo.edu.ph')) {
+            return context.json({ message: "Only @liceo.edu.ph emails are allowed" }, 401);
+        }
 
         const [users] = await pool.query<UserModel[]>(
             `SELECT * FROM users WHERE Email = ?`,

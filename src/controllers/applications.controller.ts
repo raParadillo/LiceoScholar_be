@@ -45,7 +45,7 @@ export async function getApplicationsByStatus(context: Context) { //admin view o
             JOIN users u ON a.UserID = u.UserID
             JOIN courses c ON u.CourseID = c.CourseID
             JOIN scholarships s ON a.ScholarshipID = s.ScholarshipID
-            WHERE a.Scholarship_Status = ? ORDER BY a.Submitted_Date DESC`,
+            WHERE a.Scholarship_Status = ? ORDER BY a.Submitted_Date`,
             [status]
         );
 
@@ -184,6 +184,19 @@ export async function acceptApplication(context: Context) { //admin accepts an a
     } catch (error) {
         console.log(error);
         return context.json({ message: "Error accepting application" }, 500);
+    }
+}
+
+export async function ChangeToPending(context: Context) { //change all applications to pending
+    try {
+        const [result] = await pool.query<ResultSetHeader>(
+            `UPDATE applications SET Scholarship_Status = 'Pending' Where ApplicationID = ?`,
+            [context.req.param("ApplicationID")]
+        );
+        return context.json({ message: "Application changed to pending", updatedCount: result.affectedRows }, 200);
+    } catch (error) {
+        console.log(error);
+        return context.json({ message: "Error changing application to pending" }, 500);
     }
 }
 

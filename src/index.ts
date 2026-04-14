@@ -5,6 +5,7 @@ import statsRoute from "./routes/stats.routes.js";
 import applicationsRouter from "./routes/applications.routes.js";
 import authRouter from "./routes/auth.routes.js";
 import uploadRouter from "./routes/upload.routes.js";
+import requirementsRouter from "./routes/requirments.routes.js";
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
@@ -33,6 +34,7 @@ app.route("/users", usersRoute);
 app.route("/applications", applicationsRouter);
 app.route("/auth", authRouter);
 app.route("/upload", uploadRouter);
+app.route("/requirements", requirementsRouter);
 
 // Serve static files from uploads directory
 app.use('/uploads/*', serveStatic({ root: './' }))

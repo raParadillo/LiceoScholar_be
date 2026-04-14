@@ -4,7 +4,11 @@ import type { ScholarStats, DailyApplicationsStats, UsersByCollegeStats } from "
     
 export async function getScholars(context: Context){
     try {
-        const [rows] = await pool.query<ScholarStats[]>("SELECT COUNT(CASE WHEN Scholarship_Status = 'Approved' THEN 1 END) as Active_Scholarships, COUNT(DISTINCT users.UserID) as Total_Users FROM applications LEFT JOIN users ON applications.UserID = users.UserID");
+        const [rows] = await pool.query<ScholarStats[]>(`
+            SELECT 
+                (SELECT COUNT(CASE WHEN Scholarship_Status = 'Approved' THEN 1 END) FROM applications) as Active_Scholarships,
+                (SELECT COUNT(*) FROM users WHERE RoleID = 2) as Total_Users
+        `);
         
         return context.json(rows[0], 200);
     } catch (error) {

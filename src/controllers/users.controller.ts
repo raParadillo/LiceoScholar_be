@@ -47,14 +47,14 @@ export async function getUserProfile(context: Context){
         const [rows] = await pool.query<UserProfile[]>(
             `SELECT 
                 CONCAT(users.LastName, ', ', users.FirstName) AS FullName, 
-                courses.CourseCode AS Course,
-                CONCAT(scholarships.Scholarship_Name, ' (', scholarships.Scholarship_Type, ')') AS Scholarship,
+                courses.CourseName AS Course,
+                COALESCE(CONCAT(scholarships.Scholarship_Name, ' (', scholarships.Scholarship_Type, ')'), 'No Scholarship') AS Scholarship,
                 users.Email,
                 users.Phone_Number
             FROM users 
-            JOIN courses ON users.CourseID = courses.CourseID 
-            JOIN applications ON users.UserID = applications.UserID
-            JOIN scholarships ON applications.ScholarshipID = scholarships.ScholarshipID
+            LEFT JOIN courses ON users.CourseID = courses.CourseID 
+            LEFT JOIN applications ON users.UserID = applications.UserID AND applications.Scholarship_Status = 'Approved'
+            LEFT JOIN scholarships ON applications.ScholarshipID = scholarships.ScholarshipID
             WHERE users.UserID = ?`,
             [id]
         );
@@ -63,7 +63,7 @@ export async function getUserProfile(context: Context){
             return context.json({ message: "User profile not found" }, 404);
         }
 
-        return context.json(rows, 200);
+        return context.json(rows[0], 200);
     } catch (error) {
         console.log(error);
         return context.json({message: "Error fetching user Profile"}, 500);
@@ -190,4 +190,29 @@ export async function deleteUserById(context: Context) {
     }
 }
 
-    
+export async function getStudentsList(context: Context) {
+    try {
+        const [rows] = await pool.query(`
+            SELECT 
+                u.UserID,
+                CONCAT(u.LastName, ', ', u.FirstName) AS FullName,
+                u.Email,
+                c.CourseCode AS Course,
+                CASE 
+                    WHEN COUNT(CASE WHEN a.Scholarship_Status = 'Approved' THEN 1 END) > 0 
+                    THEN 'Yes' 
+                    ELSE 'No' 
+                END AS IsActiveScholar
+            FROM users u
+            LEFT JOIN applications a ON u.UserID = a.UserID
+            LEFT JOIN courses c ON u.CourseID = c.CourseID
+            WHERE u.RoleID = 2
+            GROUP BY u.UserID, u.LastName, u.FirstName, u.Email, c.CourseCode
+            ORDER BY u.LastName, u.FirstName
+        `);
+        return context.json(rows, 200);
+    } catch (error) {
+        console.log(error);
+        return context.json({message: "Error fetching students list"}, 500);
+    }
+}
