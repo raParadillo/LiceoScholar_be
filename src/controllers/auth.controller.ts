@@ -32,7 +32,20 @@ export async function register(context: Context) {
     try {
         const userData: CreateUserModel = await context.req.json();
 
+        if(!userData.SchoolID) {
+            return context.json({ message: "School ID is required" }, 400);
+        }
         // Validate email domain
+        if(!userData.FirstName || !userData.LastName || !userData.Email || !userData.Password || !userData.CourseID || !userData.Phone_Number) {
+            return context.json({ message: "All fields are required" }, 400);
+        }
+        // check if the string contains only numbers
+        if (!userData.Phone_Number.split('').every(c => c >= '0' && c <= '9')) {
+            return context.json({ message: "Phone number must contain only numbers" }, 400);
+        }
+        if (userData.Phone_Number.length !== 11) {
+            return context.json({ message: "Phone number must be 11 digits" }, 400);
+        }
         if (!userData.Email.endsWith('@liceo.edu.ph')) {
             return context.json({ message: "Only @liceo.edu.ph emails are allowed" }, 400);
         }
@@ -42,7 +55,7 @@ export async function register(context: Context) {
         
 
         const [result] = await pool.query<ResultSetHeader>(
-            "INSERT INTO users (FirstName, LastName, Email, Password, RoleID, CourseID, Phone_Number) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO users (FirstName, LastName, Email, Password, RoleID, CourseID, Phone_Number, SchoolID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 userData.FirstName,
                 userData.LastName,
@@ -50,7 +63,8 @@ export async function register(context: Context) {
                 hashedPassword,
                 2,
                 userData.CourseID,
-                userData.Phone_Number
+                userData.Phone_Number,
+                userData.SchoolID
             ]
         );
 
@@ -65,6 +79,7 @@ export async function register(context: Context) {
 
             const payload = {
                 userId: user.UserID,
+                schoolId: userData.SchoolID,
                 email: user.Email,
                 role: user.RoleID
             };
@@ -76,6 +91,7 @@ export async function register(context: Context) {
                 message: "User registered successfully",
                 token,
                 user: {
+                    SchoolID: userData.SchoolID,
                     UserID: user.UserID,
                     FirstName: user.FirstName,
                     LastName: user.LastName,
@@ -97,9 +113,7 @@ export async function login(context: Context) {
         console.log('Login attempt:', { Email });
 
         // Validate email domain
-        if (!Email.endsWith('@liceo.edu.ph')) {
-            return context.json({ message: "Only @liceo.edu.ph emails are allowed" }, 401);
-        }
+        
 
         const [users] = await pool.query<UserModel[]>(
             `SELECT * FROM users WHERE Email = ?`,
@@ -111,6 +125,7 @@ export async function login(context: Context) {
             console.log('No user found with email:', Email);
             return context.json({ message: "Invalid credentials" }, 401);
         }
+        
 
         const user = users[0];
         
@@ -162,6 +177,7 @@ export async function getMe(context: Context) {
 
         const [users] = await pool.query<any[]>(
             `SELECT 
+                users.SchoolID,
                 users.UserID, 
                 users.FirstName, 
                 users.LastName, 

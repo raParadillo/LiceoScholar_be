@@ -12,6 +12,7 @@ export interface UserModel extends RowDataPacket {
     CourseID: number;
     Phone_number: string;
     Year_Level: number;
+    SchoolID: number;
 }
 
 export interface CreateUserModel {
@@ -25,6 +26,7 @@ export interface CreateUserModel {
     CourseID: number;
     Phone_Number: string;
     Year_Level: number;
+    SchoolID: number;
 }
 
 export interface UserProfile extends RowDataPacket {

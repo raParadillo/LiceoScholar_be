@@ -46,6 +46,7 @@ export async function getUserProfile(context: Context){
         const id = context.req.param("id");
         const [rows] = await pool.query<UserProfile[]>(
             `SELECT 
+                users.SchoolID,
                 CONCAT(users.LastName, ', ', users.FirstName) AS FullName, 
                 courses.CourseName AS Course,
                 COALESCE(CONCAT(scholarships.Scholarship_Name, ' (', scholarships.Scholarship_Type, ')'), 'No Scholarship') AS Scholarship,
@@ -123,6 +124,10 @@ export async function updateUserById(context: Context) {
         const updates: string[] = [];
         const values: any[] = [];
 
+        if (userData.SchoolID !== undefined) {
+            updates.push("SchoolID = ?");
+            values.push(userData.SchoolID);
+        }
         if (userData.FirstName !== undefined) {
             updates.push("FirstName = ?");
             values.push(userData.FirstName);
@@ -194,6 +199,7 @@ export async function getStudentsList(context: Context) {
     try {
         const [rows] = await pool.query(`
             SELECT 
+                u.SchoolID,
                 u.UserID,
                 CONCAT(u.LastName, ', ', u.FirstName) AS FullName,
                 u.Email,

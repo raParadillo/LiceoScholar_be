@@ -146,3 +146,26 @@ export async function deleteProfilePhoto(context: Context) {
         return context.json({ message: "Error deleting photo" }, 500);
     }
 }
+
+export async function uploadRequirementphoto(context: Context) {
+    try {
+        const userId = context.req.param('userId');
+        const requirementID = context.req.param('requirementID');
+
+
+
+        
+    } catch (error) {
+        console.error("Upload requirement error:", error);
+        return context.json({ message: "Error uploading requirement" }, 500);
+    }
+}
+export async function deleteRequirementPhoto(context: Context) {
+    try {
+        const userId = context.req.param('userId');
+        const requirementID = context.req.param('requirementID');
+    } catch (error) {
+        console.error("Delete requirement error:", error);
+        return context.json({ message: "Error deleting requirement" }, 500);
+    }
+}

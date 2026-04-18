@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import pool from "../config/db.js";
-import type { ApplicationModel } from "../models/applications.model.js";
+import type { ApplicationModel, SySem } from "../models/applications.model.js";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 
 
@@ -8,12 +8,14 @@ export async function getApplications(context: Context) {
     try {
         const [rows] = await pool.query<ApplicationModel[]>( //admin view of all applications
             `SELECT 
+                users.SchoolID,
                 applications.ApplicationID,
                 applications.UserID,
                 CONCAT(users.LastName, ', ', users.FirstName) AS FullName,
                 courses.CourseCode AS Course,
                 CONCAT(scholarships.Scholarship_Name, ' (', scholarships.Scholarship_Type, ')') AS ScholarshipType,
                 DATE_FORMAT(applications.Submitted_Date, '%Y-%m-%d %H:%i') AS Application_Date,
+                CONCAT(applications.SchoolYear, ' - ', CASE WHEN applications.Semester = 1 THEN '1st' WHEN applications.Semester = 2 THEN '2nd' END, ' sem') AS SchoolYear,
                 applications.Scholarship_Status AS Status
             FROM applications
             JOIN users ON applications.UserID = users.UserID
@@ -34,6 +36,7 @@ export async function getApplicationsByStatus(context: Context) { //admin view o
 
         const [rows] = await pool.query<ApplicationModel[]>(
             `SELECT 
+                u.SchoolID,
                 a.ApplicationID,
                 a.UserID,
                 CONCAT(u.LastName, ', ', u.FirstName) AS FullName,
@@ -62,13 +65,19 @@ export async function getApplicationsByUserID(context: Context) { //students vie
 
         const [rows] = await pool.query<ApplicationModel[]>(
             `SELECT 
+                u.SchoolID,
                 a.ApplicationID,
                 a.UserID,
                 CONCAT(u.LastName, ', ', u.FirstName) AS FullName,
                 c.CourseCode AS Course,
                 CONCAT(s.Scholarship_Name, ' (', s.Scholarship_Type, ')') AS ScholarshipType,
                 DATE_FORMAT(a.Submitted_Date, '%Y-%m-%d %H:%i:%s') AS Application_Date,
-                a.Scholarship_Status AS Status
+                a.Scholarship_Status AS Status,
+                a.SchoolYear,
+                CASE 
+                    WHEN a.Semester = 1 THEN '1st sem'
+                    WHEN a.Semester = 2 THEN '2nd sem'
+                END AS Semester
             FROM applications a
             JOIN users u ON a.UserID = u.UserID
             JOIN courses c ON u.CourseID = c.CourseID
@@ -90,6 +99,7 @@ export async function searchApplicationsByName(context: Context) {
 
         const [rows] = await pool.query<ApplicationModel[]>(
             `SELECT 
+                u.SchoolID,
                 a.ApplicationID,
                 a.UserID,
                 CONCAT(u.LastName, ', ', u.FirstName) AS FullName,
@@ -119,7 +129,7 @@ export async function searchApplicationsByName(context: Context) {
 
 export async function createApplication(context: Context) { //student applies for a scholarship
     try {
-        const { UserID, ScholarshipID } = await context.req.json();
+        const { UserID, ScholarshipID, SchoolYear, Semester } = await context.req.json();
 
         
         const [pendingRows] = await pool.query<ApplicationModel[]>(
@@ -134,8 +144,8 @@ export async function createApplication(context: Context) { //student applies fo
         }
 
         const [result] = await pool.query<ResultSetHeader>(
-            `INSERT INTO applications (UserID, ScholarshipID, Scholarship_Status, Submitted_Date) VALUES (?, ?, 'Pending', NOW())`,
-            [UserID, ScholarshipID]
+            `INSERT INTO applications (UserID, ScholarshipID, Scholarship_Status, Submitted_Date, SchoolYear, Semester) VALUES (?, ?, 'Pending', NOW(), ?, ?)`,
+            [UserID, ScholarshipID, SchoolYear, Semester]
         );
 
         return context.json({ 
@@ -214,5 +224,49 @@ export async function semFinish(context: Context) { //admin finishes the semeste
     } catch (error) {
         console.log(error);
         return context.json({ message: "Error finishing semester" }, 500);
+    }
+}
+
+
+export async function getSySem(context: Context) {
+    try {
+        const [rows] = await pool.query<SySem[]>(
+            `SELECT * FROM sy_sem Where sy_semID = 1`
+        );
+        return context.json(rows, 200);
+    } catch (error) {
+        console.log(error);
+        return context.json({ message: "Error fetching sy_sem" }, 500);
+    }
+}
+
+export async function updateSySem(context: Context) {
+    try {
+        const [rows] = await pool.query<SySem[]>(
+            `SELECT sy_semID, Year_start, Year_end, Semester FROM sy_sem WHERE sy_semID = 1`
+        );
+
+        const sem = rows[0];
+        let newYearStart = sem.Year_start;
+        let newYearEnd = sem.Year_end;
+        let newSemester = sem.Semester === 1 ? 2 : 1;
+
+        if (sem.Semester === 2) {
+            newYearStart += 1;
+            newYearEnd += 1;
+        }
+
+        await pool.query(
+            `UPDATE sy_sem SET Year_start = ?, Year_end = ?, Semester = ? WHERE sy_semID = 1`,
+            [newYearStart, newYearEnd, newSemester]
+        );
+
+        return context.json({
+            message: "Semester updated",
+            newSemester,
+            newYear: `${newYearStart}-${newYearEnd}`
+        }, 200);
+    } catch (error) {
+        return context.json({ message: "Error updating semester" }, 500);
     }
 }
